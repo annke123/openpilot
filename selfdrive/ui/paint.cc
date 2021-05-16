@@ -202,7 +202,7 @@ static void ui_draw_vision_maxspeed(UIState *s) {
   const Rect rect = {s->viz_rect.x + (bdr_s * 2), int(s->viz_rect.y + (bdr_s * 1.5)), 184, 202};
   ui_fill_rect(s->vg, rect, COLOR_BLACK_ALPHA(100), 30.);
   NVGcolor color = COLOR_WHITE_ALPHA(100);
-  if ((*s->sm)["deviceState"].getGeoRecordingOff())
+  if (s->scene.deviceState.getGeoRecordingOff())
     color = COLOR_RED;
   ui_draw_rect(s->vg, rect, color, 10, 20.);
 
@@ -445,7 +445,7 @@ static mat4 get_driver_view_transform() {
       0.0,  0.0, 1.0, 0.0,
       0.0,  0.0, 0.0, 1.0,
     }};
-  
+
   } else {
      // frame from 4/3 to 16/9 display
     transform = (mat4){{
