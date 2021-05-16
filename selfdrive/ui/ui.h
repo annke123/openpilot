@@ -80,9 +80,7 @@ typedef struct UIScene {
   bool driver_view;
 
   cereal::PandaState::PandaType pandaType;
-
-  cereal::DeviceState::Reader deviceState;
-
+  
   // gps
   int satelliteCount;
 
