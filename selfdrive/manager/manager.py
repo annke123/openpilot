@@ -39,6 +39,7 @@ def manager_init():
     ("OpenpilotEnabledToggle", "1"),
     ("VisionRadarToggle", "0"),
     ("IsDriverViewEnabled", "0"),
+    ("lbr_exclusion_zone", "null"),
   ]
 
   if params.get("RecordFrontLock", encoding='utf-8') == "1":
@@ -119,7 +120,7 @@ def manager_thread():
     sm.update()
     not_run = ignore[:]
 
-    if sm['deviceState'].freeSpacePercent < 5:
+    if sm['deviceState'].freeSpacePercent < 5 or sm['deviceState'].geoRecordingOff:
       not_run.append("loggerd")
 
     started = sm['deviceState'].started
