@@ -114,6 +114,9 @@ private:
   QPixmap left_img;
   QPixmap right_img;
   QPixmap mads_imgs[2];
+  QPixmap geo_rec_off;
+  QPixmap geo_rec_on;
+  QPixmap geo_rec_nogps;
   const int radius = 192;
   const int img_size = (radius / 2) * 1.5;
   const int subsign_img_size = 35;
@@ -170,6 +173,9 @@ private:
   bool standStill;
   int standstillElapsedTime;
 
+  int geoRecord = 0; //0 - NOGPS, 1 = OFF, 2 = ON
+  bool gaspressed = false;
+  bool brakepressed = false;
 signals:
   void valueChanged();
 };

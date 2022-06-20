@@ -342,6 +342,9 @@ OnroadHud::OnroadHud(QWidget *parent) : QWidget(parent) {
   right_img = QPixmap("../assets/img_turn_right_icon.png").scaled(subsign_img_size, subsign_img_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
   mads_imgs[0] = QPixmap("../assets/img_mads_off.png").scaled(img_size, img_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
   mads_imgs[1] = QPixmap("../assets/img_mads_on.png").scaled(img_size, img_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+  geo_rec_off = loadPixmap("../assets/geo_rec_off.png", {img_size, img_size});
+  geo_rec_on = loadPixmap("../assets/geo_rec_on.png", {img_size, img_size});
+  geo_rec_nogps = loadPixmap("../assets/geo_rec_nogps.png", {img_size, img_size});
 
   connect(this, &OnroadHud::valueChanged, [=] { update(); });
 }
@@ -356,6 +359,14 @@ void OnroadHud::updateState(const UIState &s) {
   if (cruise_set && !s.scene.is_metric) {
     maxspeed *= KM_TO_MILE;
   }
+
+  if ((*s.sm)["deviceState"].getDeviceState().getGeoRecording() == cereal::DeviceState::GeoRecordingStatus::NOGPS)
+    geoRecord = 0;
+  if ((*s.sm)["deviceState"].getDeviceState().getGeoRecording() == cereal::DeviceState::GeoRecordingStatus::OFF)
+    geoRecord = 1;
+  if ((*s.sm)["deviceState"].getDeviceState().getGeoRecording() == cereal::DeviceState::GeoRecordingStatus::ON)
+    geoRecord = 2;
+
   QString maxspeed_str = cruise_set ? QString::number(std::nearbyint(maxspeed)) : "N/A";
   float cur_speed = std::max(0.0, sm["carState"].getCarState().getVEgo() * (s.scene.is_metric ? MS_TO_KPH : MS_TO_MPH));
 
@@ -484,6 +495,13 @@ void OnroadHud::paintEvent(QPaintEvent *event) {
   drawSpeedText(p, rect().center().x(), 210, speed, is_brakelight_on ? QColor(0xff, 0, 0, 255) : QColor(0xff, 0xff, 0xff, 255));
   configFont(p, "Open Sans", 66, "Regular");
   drawText(p, rect().center().x(), 290, speedUnit, 200);
+
+  if (geoRecord == 2)
+    drawIcon(p, rect().right() - radius / 2 - bdr_s * 2, rect().bottom() - footer_h / 2, geo_rec_on, QColor(0, 0, 0, 70), 1.0);
+  else if (geoRecord == 1)
+    drawIcon(p, rect().right() - radius / 2 - bdr_s * 2, rect().bottom() - footer_h / 2, geo_rec_off, QColor(0, 0, 0, 70), 1.0);
+  else
+    drawIcon(p, rect().right() - radius / 2 - bdr_s * 2, rect().bottom() - footer_h / 2, geo_rec_nogps, QColor(0, 0, 0, 70), 1.0);
 
   if (engageable) {
     if (showDebugUI && showVTC) {

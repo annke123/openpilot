@@ -24,6 +24,7 @@ from selfdrive.swaglog import cloudlog
 from selfdrive.thermald.power_monitoring import PowerMonitoring
 from selfdrive.version import terms_version, training_version
 
+GeoRecordingStatus = log.DeviceState.GeoRecordingStatus
 ThermalStatus = log.DeviceState.ThermalStatus
 NetworkType = log.DeviceState.NetworkType
 NetworkStrength = log.DeviceState.NetworkStrength
@@ -153,11 +154,23 @@ def set_offroad_alert_if_changed(offroad_alert: str, show_alert: bool, extra_tex
   prev_offroad_states[offroad_alert] = (show_alert, extra_text)
   set_offroad_alert(offroad_alert, show_alert, extra_text)
 
+def CalculateArea(x1, y1, x2, y2, x3, y3):
+  return abs((x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2)) / 2.0)
+
+def IsInsideGeoZone(x1, y1, x2, y2, x3, y3, x4, y4, x, y):
+  A = (CalculateArea(x1, y1, x2, y2, x3, y3) + CalculateArea(x1, y1, x4, y4, x3, y3))
+  A1 = CalculateArea(x, y, x1, y1, x2, y2)
+  A2 = CalculateArea(x, y, x2, y2, x3, y3)
+  A3 = CalculateArea(x, y, x3, y3, x4, y4)
+  A4 = CalculateArea(x, y, x1, y1, x4, y4)
+  cloudlog.info("***********                        DELTA                           *********** %s" % (A - (A1 + A2 + A3 + A4)))
+  return round((A - (A1 + A2 + A3 + A4)),8) == 0
+
 
 def thermald_thread():
 
   pm = messaging.PubMaster(['deviceState'])
-
+  location_sock = messaging.sub_sock('gpsLocationExternal')
   pandaState_timeout = int(1000 * 2.5 * DT_TRML)  # 2.5x the expected pandaState frequency
   pandaState_sock = messaging.sub_sock('pandaStates', timeout=pandaState_timeout)
   sm = messaging.SubMaster(["peripheralState", "gpsLocationExternal", "managerState"])
@@ -203,6 +216,64 @@ def thermald_thread():
 
   # TODO: use PI controller for UNO
   controller = PIDController(k_p=0, k_i=2e-3, neg_limit=-80, pos_limit=0, rate=(1 / DT_TRML))
+  TempString = Params().get("lbr_exclusion_zone")
+
+  top_left_lat = []
+  top_left_lon = []
+  top_right_lat = []
+  top_right_lon = []
+  bottom_right_lat = []
+  bottom_right_lon = []
+  bottom_left_lat = []
+  bottom_left_lon = []
+
+  LinesInFile = TempString.decode('utf8').split("\n")
+
+  indx = 0
+  indx_out = 0
+  for i in range(len(LinesInFile)):
+    if indx < len(LinesInFile): #need to account for indx incrementing inside the loop
+      if "#" not in LinesInFile[indx] and LinesInFile[indx] != "":
+        if "," in LinesInFile[indx]:
+          #cloudlog.info("*********** LinesInFile[indx] ***********  %s" % LinesInFile[indx])
+          SplitValue = LinesInFile[indx].split(",")
+          top_left_lat.append(float(SplitValue[0]))
+          top_left_lon.append(float(SplitValue[1]))
+          #cloudlog.info("*********** top_left_lat[indx_out] ***********  %s" % top_left_lat[indx_out])
+          #cloudlog.info("*********** top_left_lon[indx_out] ***********  %s" % top_left_lon[indx_out])
+
+          indx = indx + 1
+          #cloudlog.info("*********** LinesInFile[indx] ***********  %s" % LinesInFile[indx])
+          SplitValue = LinesInFile[indx].split(",")
+          top_right_lat.append(float(SplitValue[0]))
+          top_right_lon.append(float(SplitValue[1]))
+          #cloudlog.info("*********** top_right_lat[indx_out] ***********  %s" % top_right_lat[indx_out])
+          #cloudlog.info("*********** top_right_lon[indx_out] ***********  %s" % top_right_lon[indx_out])
+
+          indx = indx + 1
+          #cloudlog.info("*********** LinesInFile[indx] ***********  %s" % LinesInFile[indx])
+          SplitValue = LinesInFile[indx].split(",")
+          bottom_right_lat.append(float(SplitValue[0]))
+          bottom_right_lon.append(float(SplitValue[1]))
+          #cloudlog.info("*********** bottom_right_lat[indx_out] ***********  %s" % bottom_right_lat[indx_out])
+          #cloudlog.info("*********** bottom_right_lon[indx_out] ***********  %s" % bottom_right_lon[indx_out])
+
+          indx = indx + 1
+          #cloudlog.info("*********** LinesInFile[indx] ***********  %s" % LinesInFile[indx])
+          SplitValue = LinesInFile[indx].split(",")
+          bottom_left_lat.append(float(SplitValue[0]))
+          bottom_left_lon.append(float(SplitValue[1]))
+          #cloudlog.info("*********** bottom_left_lat[indx_out] ***********  %s" % bottom_left_lat[indx_out])
+          #cloudlog.info("*********** bottom_left_lon[indx_out] ***********  %s" % bottom_left_lon[indx_out])
+
+          indx_out = indx_out + 1
+    indx = indx + 1
+
+  GeoZoneDataAvailable = False
+  last_geo_record_state = GeoRecordingStatus.on
+  if indx_out != 0:
+    GeoZoneDataAvailable = True
+    last_geo_record_state = GeoRecordingStatus.nogps #Init to nogps so recording is delayed until location data is received
 
   # Leave flag for loggerd to indicate device was left onroad
   if params.get_bool("IsOnroad"):
@@ -424,6 +495,42 @@ def thermald_thread():
       msg.deviceState.lastAthenaPingTime = int(last_ping)
 
     msg.deviceState.thermalStatus = thermal_status
+    if GeoZoneDataAvailable:
+      if (count % int(3.0 / DT_TRML)) == 0: #only check for updates once every 3 seconds
+        loc = messaging.recv_sock(location_sock)
+        loc = loc.gpsLocationExternal if loc else None
+        if loc is not None:
+          cloudlog.info("*********** Latitude ***********  %s" % loc.latitude)
+          cloudlog.info("*********** Longitude *********** %s" % loc.longitude)
+          cloudlog.info("*********** Accuracy *********** %s" % loc.accuracy)
+          if loc.latitude != 0 and loc.longitude != 0 and loc.accuracy < 20: #less than 10m accuracy
+            matchFound = False
+
+            for i in range(len(top_left_lat)):
+              if IsInsideGeoZone(top_left_lat[i], top_left_lon[i], top_right_lat[i], top_right_lon[i], bottom_right_lat[i], bottom_right_lon[i], bottom_left_lat[i], bottom_left_lon[i], loc.latitude, loc.longitude):
+                matchFound = True
+                break
+
+            cloudlog.info("*********** i *********** %s" % i)
+            cloudlog.info("*********** matchfound *********** %s" % matchFound)
+
+            if matchFound:
+              msg.deviceState.geoRecording = GeoRecordingStatus.off #inside GEO zone, need to stop recording
+            else:
+              msg.deviceState.geoRecording = GeoRecordingStatus.on #outside GEO zone, ok to record
+          else:
+            msg.deviceState.geoRecording = last_geo_record_state # data is not ready, default to init or last value sent
+        else:
+          msg.deviceState.geoRecording = last_geo_record_state # data is not ready, default to init or last value sent
+      else:
+        msg.deviceState.geoRecording = last_geo_record_state # 3 sec hasn't elapsed, default to init or last value sent
+    else:
+      msg.deviceState.geoRecording = GeoRecordingStatus.on # no GeoZone data file provided, default to 'ok' to record
+
+    cloudlog.info("*********** Thermald: GEO_Recording_OFF *********** %s" % msg.deviceState.geoRecording)
+
+    last_geo_record_state = msg.deviceState.geoRecording
+
     pm.send("deviceState", msg)
 
     if EON and not is_uno:

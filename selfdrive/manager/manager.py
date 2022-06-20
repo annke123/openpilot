@@ -6,6 +6,7 @@ import subprocess
 import sys
 import traceback
 
+from cereal import log
 import cereal.messaging as messaging
 import selfdrive.crash as crash
 from common.basedir import BASEDIR
@@ -21,6 +22,8 @@ from selfdrive.swaglog import cloudlog, add_file_handler
 from selfdrive.version import get_dirty, get_commit, get_version, get_origin, get_short_branch, \
                               terms_version, training_version, get_comma_remote
 
+
+GeoRecordingStatus = log.DeviceState.GeoRecordingStatus
 
 sys.path.append(os.path.join(BASEDIR, "pyextra"))
 
@@ -61,6 +64,7 @@ def manager_init():
     ("SpeedLimitPercOffset", "1"),
     ("TurnSpeedControl", "1"),
     ("TurnVisionControl", "1"),
+    ("lbr_exclusion_zone", "null"),
   ]
   if not PC:
     default_params.append(("LastUpdateTime", datetime.datetime.utcnow().isoformat().encode('utf8')))
@@ -166,7 +170,7 @@ def manager_thread():
     sm.update()
     not_run = ignore[:]
 
-    if sm['deviceState'].freeSpacePercent < 5:
+    if sm['deviceState'].geoRecording == GeoRecordingStatus.off or sm['deviceState'].geoRecording == GeoRecordingStatus.nogps:
       not_run.append("loggerd")
 
     started = sm['deviceState'].started
