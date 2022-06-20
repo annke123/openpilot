@@ -342,9 +342,9 @@ OnroadHud::OnroadHud(QWidget *parent) : QWidget(parent) {
   right_img = QPixmap("../assets/img_turn_right_icon.png").scaled(subsign_img_size, subsign_img_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
   mads_imgs[0] = QPixmap("../assets/img_mads_off.png").scaled(img_size, img_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
   mads_imgs[1] = QPixmap("../assets/img_mads_on.png").scaled(img_size, img_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-  geo_rec_off = loadPixmap("../assets/geo_rec_off.png", {img_size, img_size});
-  geo_rec_on = loadPixmap("../assets/geo_rec_on.png", {img_size, img_size});
-  geo_rec_nogps = loadPixmap("../assets/geo_rec_nogps.png", {img_size, img_size});
+  geo_rec_off = QPixmap("../assets/geo_rec_off.png").scaled(img_size, img_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+  geo_rec_on = QPixmap("../assets/geo_rec_on.png").scaled(img_size, img_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+  geo_rec_nogps = QPixmap("../assets/geo_rec_nogps.png").scaled(img_size, img_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
   connect(this, &OnroadHud::valueChanged, [=] { update(); });
 }
