@@ -497,11 +497,11 @@ void OnroadHud::paintEvent(QPaintEvent *event) {
   drawText(p, rect().center().x(), 290, speedUnit, 200);
 
   if (geoRecord == 2)
-    drawIcon(p, rect().right() - radius / 2 - bdr_s * 2, rect().bottom() - footer_h / 2, geo_rec_on, QColor(0, 0, 0, 70), 1.0);
+    drawIcon(p, rect().right() - radius / 2 - bdr_s * 2, rect().bottom() - footer_h / 2 + 100, geo_rec_on, QColor(0, 0, 0, 70), 1.0);
   else if (geoRecord == 1)
-    drawIcon(p, rect().right() - radius / 2 - bdr_s * 2, rect().bottom() - footer_h / 2, geo_rec_off, QColor(0, 0, 0, 70), 1.0);
+    drawIcon(p, rect().right() - radius / 2 - bdr_s * 2, rect().bottom() - footer_h / 2 + 100, geo_rec_off, QColor(0, 0, 0, 70), 1.0);
   else
-    drawIcon(p, rect().right() - radius / 2 - bdr_s * 2, rect().bottom() - footer_h / 2, geo_rec_nogps, QColor(0, 0, 0, 70), 1.0);
+    drawIcon(p, rect().right() - radius / 2 - bdr_s * 2, rect().bottom() - footer_h / 2 + 100, geo_rec_nogps, QColor(0, 0, 0, 70), 1.0);
 
   if (engageable) {
     if (showDebugUI && showVTC) {
