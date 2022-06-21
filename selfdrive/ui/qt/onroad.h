@@ -174,8 +174,6 @@ private:
   int standstillElapsedTime;
 
   int geoRecord = 0; //0 - NOGPS, 1 = OFF, 2 = ON
-  bool gaspressed = false;
-  bool brakepressed = false;
 signals:
   void valueChanged();
 };
